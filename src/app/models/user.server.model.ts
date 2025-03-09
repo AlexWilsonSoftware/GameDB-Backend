@@ -20,4 +20,24 @@ const checkEmailExists = async (email: string): Promise<boolean> => {
     return (result[0].count > 0);
 }
 
-export {insert, checkEmailExists}
+const checkEmailMatchesPassword = async (email: string, password: string): Promise<boolean> => {
+    Logger.info("Checking if email matches password: " + email);
+    const conn = await getPool().getConnection();
+    const query = "SELECT password FROM user WHERE email = ?";
+    const [result] = await conn.query(query, [email]);
+    await conn.release();
+    return result[0].password === password;
+}
+
+const establishUserToken = async (email: string, token: string): Promise<number> => {
+    Logger.info("Establishing user token in database for user: " + email);
+    const conn = await getPool().getConnection();
+    const query = "SELECT * FROM user WHERE email = ?";
+    const [result] = await conn.query(query, [email]);
+    const query2 = "UPDATE user SET auth_token = ? WHERE email = ?";
+    conn.query(query2, [token, email]);
+    await conn.release();
+    return result[0].id;
+}
+
+export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken}

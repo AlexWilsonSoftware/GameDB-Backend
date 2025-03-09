@@ -3,6 +3,7 @@ import Logger from '../../config/logger';
 import {validate} from "../services/validator";
 import * as users from "../models/user.server.model";
 import * as schemas from "../resources/schemas.json";
+import {establishUserToken} from "../models/user.server.model";
 
 
 const register = async (req: Request, res: Response): Promise<void> => {
@@ -21,8 +22,6 @@ const register = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-
-
         const result = await users.insert(req.body.email, req.body.firstName, req.body.lastName, req.body.password);
         res.status(201).send({userId: result.insertId});
     } catch (err) {
@@ -33,9 +32,30 @@ const register = async (req: Request, res: Response): Promise<void> => {
 }
 
 const login = async (req: Request, res: Response): Promise<void> => {
+    const randToken = require('rand-token');
+    Logger.http(`POST login with email: ${req.body.email}`);
+    const validation = await validate(schemas.user_login, req.body);
+    if (validation !== true) {
+        res.statusMessage = 'Invalid information';
+        res.status(400).send();
+        return;
+    }
+    const emailExists = await users.checkEmailExists(req.body.email);
+    if (!emailExists) {
+        res.statusMessage = 'Incorrect email/password';
+        res.status(401).send();
+        return;
+    }
+    const passwordMatches = await users.checkEmailMatchesPassword(req.body.email, req.body.password);
+    if (!passwordMatches) {
+        res.statusMessage = 'Incorrect email/password';
+        res.status(401).send();
+        return;
+    }
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        const authToken = randToken.generate(32);
+        const id = await establishUserToken(req.body.email, authToken);
+        res.status(200).send({userId: id, token: authToken});
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
