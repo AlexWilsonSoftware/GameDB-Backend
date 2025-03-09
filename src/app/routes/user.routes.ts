@@ -1,6 +1,6 @@
 import {Express} from "express";
 import {rootUrl} from "./base.routes";
-import * as user from '../controllers/user.controller';
+import * as user from '../controllers/user.controller'
 import * as userImages from '../controllers/user.image.controller';
 
 module.exports = (app: Express) => {

@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{BASE_URL}}/users/register
+  url: http://localhost:4941/api/v1/users/register
   body: json
   auth: none
 }
@@ -29,15 +29,15 @@ tests {
   });
   
   test("Expected response", function() {
-      expect(res.getBody().userId).to.be.a('number')
+      expect(res.getBody().insertId).to.be.a('number')
   });
   
   test("Set created_user_id", function() {
-    expect(res.getBody().userId).not.to.be.undefined;
-      const userId = res.getBody().userId;
-      console.log(`userID: ${userId}`)
-      if (typeof userId !== "undefined") {
-          bru.setEnvVar("CREATED_USER_ID", userId);
+    expect(res.getBody().insertId).not.to.be.undefined;
+      const insertId = res.getBody().insertId;
+      console.log(`insertId: ${insertId}`)
+      if (typeof insertId !== "undefined") {
+          bru.setEnvVar("CREATED_USER_ID", insertId);
       }
   });
 }
