@@ -64,14 +64,16 @@ const login = async (req: Request, res: Response): Promise<void> => {
 }
 
 const logout = async (req: Request, res: Response): Promise<void> => {
-    const isLoggedIn = await users.checkUserToken();
+    Logger.http(`POST logout with email: ${req.body.email}`);
+    const token = req.header("X-Authorization");
+    const isLoggedIn = await users.checkUserToken(token);
     if (!isLoggedIn) {
         res.statusMessage = 'Cannot log out if you are not authenticated';
         res.status(401).send();
         return;
     }
     try {
-        await users.removeUserToken();
+        await users.removeUserToken(token);
         res.status(200).send();
     } catch (err) {
         Logger.error(err);
@@ -81,9 +83,29 @@ const logout = async (req: Request, res: Response): Promise<void> => {
 }
 
 const view = async (req: Request, res: Response): Promise<void> => {
+    Logger.http(`GET view with email: ${req.body.email}`);
+    const id = req.params.id;
+    const loggedIn = await users.compareUserToken(id, req.header("X-Authorization"));
+    if (isNaN(Number(id))) {
+        res.statusMessage = 'Bad Request';
+        res.status(400).send();
+        return;
+    }
+    const userExists = await users.checkUserExists(id);
+    if (!userExists) {
+        res.statusMessage = 'No user with specified ID';
+        res.status(404).send();
+        return;
+    }
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        if (loggedIn) {
+            const result = await users.getAll(id);
+            res.status(200).send({"email": result.email, "firstName": result.first_name, "lastName": result.last_name});
+            return
+        } else {
+            const result = await users.getNames(id);
+            res.status(200).send({"firstName": result.first_name, "lastName": result.last_name});
+        }
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";

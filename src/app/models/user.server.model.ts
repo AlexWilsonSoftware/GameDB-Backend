@@ -11,6 +11,24 @@ const insert = async (email: string, firstName: string, lastName: string, passwo
     return result;
 }
 
+const getAll = async (id: string): Promise<any> => {
+    Logger.info("Getting details of user with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "SELECT * FROM user WHERE id = ?";
+    const [result] = await conn.query(query, [id]);
+    await conn.release();
+    return result[0];
+}
+
+const getNames = async (id: string): Promise<any> => {
+    Logger.info("Getting details of user with name: " + id);
+    const conn = await getPool().getConnection();
+    const query = "SELECT first_name, last_name FROM user WHERE id = ?";
+    const [result] = await conn.query(query, [id]);
+    await conn.release();
+    return result[0];
+}
+
 const checkEmailExists = async (email: string): Promise<boolean> => {
     Logger.info("Checking if email exists: " + email);
     const conn = await getPool().getConnection();
@@ -40,22 +58,43 @@ const establishUserToken = async (email: string, token: string): Promise<number>
     return result[0].id;
 }
 
-const checkUserToken = async (): Promise<boolean> => {
+const checkUserToken = async (token: string): Promise<boolean> => {
     Logger.info("Checking if a user is logged in");
     const conn = await getPool().getConnection();
-    const query = "SELECT COUNT(*) as count FROM user WHERE auth_token is not null";
-    const [result] = await conn.query(query, [])
+    const query = "SELECT COUNT(*) as count FROM user WHERE auth_token = ?";
+    const [result] = await conn.query(query, [token])
     await conn.release();
     return (result[0].count > 0);
 }
 
-const removeUserToken = async (): Promise<void> => {
+const compareUserToken = async (id: string, tokenParam: string): Promise<boolean> => {
+    Logger.info(`Checking user ${id} is logged in`);
+    const conn = await getPool().getConnection();
+    const query = "SELECT auth_token FROM user WHERE id = ?";
+    const [result] = await conn.query(query, [id]);
+    if (result.length === 0) {
+        return false;
+    }
+    await conn.release();
+    return (result[0].auth_token === tokenParam);
+}
+
+const removeUserToken = async (token: string): Promise<void> => {
     Logger.info("Removing auth token");
     const conn = await getPool().getConnection();
-    const query = "UPDATE user SET auth_token = null WHERE auth_token is not null"
-    conn.query(query, []);
+    const query = "UPDATE user SET auth_token = null WHERE auth_token = ?"
+    conn.query(query, [token]);
     await conn.release();
     return;
 }
 
-export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken}
+const checkUserExists = async (id: string): Promise<boolean> => {
+    Logger.info("Checking if user exists with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM user WHERE id = ?";
+    const [result] = await conn.query(query, [id]);
+    await conn.release();
+    return (result[0].count > 0);
+}
+
+export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken}
