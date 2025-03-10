@@ -40,4 +40,22 @@ const establishUserToken = async (email: string, token: string): Promise<number>
     return result[0].id;
 }
 
-export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken}
+const checkUserToken = async (): Promise<boolean> => {
+    Logger.info("Checking if a user is logged in");
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM user WHERE auth_token is not null";
+    const [result] = await conn.query(query, [])
+    await conn.release();
+    return (result[0].count > 0);
+}
+
+const removeUserToken = async (): Promise<void> => {
+    Logger.info("Removing auth token");
+    const conn = await getPool().getConnection();
+    const query = "UPDATE user SET auth_token = null WHERE auth_token is not null"
+    conn.query(query, []);
+    await conn.release();
+    return;
+}
+
+export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken}

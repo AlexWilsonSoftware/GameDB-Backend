@@ -64,9 +64,15 @@ const login = async (req: Request, res: Response): Promise<void> => {
 }
 
 const logout = async (req: Request, res: Response): Promise<void> => {
+    const isLoggedIn = await users.checkUserToken();
+    if (!isLoggedIn) {
+        res.statusMessage = 'Cannot log out if you are not authenticated';
+        res.status(401).send();
+        return;
+    }
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        await users.removeUserToken();
+        res.status(200).send();
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
