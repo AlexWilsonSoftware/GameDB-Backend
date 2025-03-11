@@ -47,6 +47,15 @@ const checkEmailMatchesPassword = async (email: string, password: string): Promi
     return result[0].password === password;
 }
 
+const checkPasswordWithId = async (id: string, password: string): Promise<boolean> => {
+    Logger.info("Checking if user with id ${id} current password is correct");
+    const conn = await getPool().getConnection();
+    const query = "SELECT password FROM user WHERE id = ?";
+    const [result] = await conn.query(query, [id]);
+    await conn.release();
+    return result[0].password === password;
+}
+
 const establishUserToken = async (email: string, token: string): Promise<number> => {
     Logger.info("Establishing user token in database for user: " + email);
     const conn = await getPool().getConnection();
@@ -97,4 +106,40 @@ const checkUserExists = async (id: string): Promise<boolean> => {
     return (result[0].count > 0);
 }
 
-export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken}
+const updateEmail = async (email: string, id: string): Promise<void> => {
+    Logger.info("Updating email of user with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE user SET email = ? WHERE id = ?";
+    await conn.query(query, [email, id]);
+    await conn.release();
+    return;
+}
+
+const updateFirstName = async (firstName: string, id: string): Promise<void> => {
+    Logger.info("Updating first name of user with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE user SET first_name = ? WHERE id = ?";
+    await conn.query(query, [firstName, id]);
+    await conn.release();
+    return;
+}
+
+const updateLastName = async (lastName: string, id: string): Promise<void> => {
+    Logger.info("Updating last name of user with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE user SET last_name = ? WHERE id = ?";
+    await conn.query(query, [lastName, id]);
+    await conn.release();
+    return;
+}
+
+const updatePassword = async (password: string, id: string): Promise<void> => {
+    Logger.info("Updating password of user with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE user SET password = ? WHERE id = ?";
+    await conn.query(query, [password, id]);
+    await conn.release();
+    return;
+}
+
+export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken, updateEmail, updatePassword, updateLastName, updateFirstName, checkPasswordWithId}

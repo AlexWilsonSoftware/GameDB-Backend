@@ -114,9 +114,73 @@ const view = async (req: Request, res: Response): Promise<void> => {
 }
 
 const update = async (req: Request, res: Response): Promise<void> => {
+    const id = req.params.id;
+    const email = req.body?.email;
+    const firstName = req.body?.firstName;
+    const lastName = req.body?.lastName;
+    const password = req.body?.password;
+    const currentPassword = req.body?.currentPassword;
+    const token = req.header("X-Authorization");
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        if (isNaN(Number(id))) {
+            res.statusMessage = 'Bad Request';
+            res.status(400).send();
+            return;
+        }
+        if (!(await validate(schemas.user_edit, req.body) === true)) {
+            res.statusMessage = 'Bad request'
+            res.status(400).send();
+            return;
+        }
+        if (!await users.checkUserToken(token)) {
+            res.statusMessage = 'Unauthorized';
+            res.status(401).send();
+            return;
+        }
+        if (!await users.compareUserToken(id, token)) {
+            res.statusMessage = "Can not edit another user's information";
+            res.status(403).send();
+            return;
+        }
+        if (await users.checkEmailExists(req.body.email)) {
+            res.statusMessage = 'Email is already in use';
+            res.status(403).send();
+            return;
+        }
+        if (password !== undefined && currentPassword === undefined) {
+            res.statusMessage = 'Bad Request';
+            res.status(400).send();
+            return;
+        }
+        if (password !== undefined && currentPassword !== undefined && password === currentPassword) {
+            res.statusMessage = 'Identical current and new passwords';
+            res.status(403).send();
+            return;
+        }
+        if (!await users.checkUserExists(id)) {
+            res.statusMessage = 'Not Found';
+            res.status(404).send();
+            return;
+        }
+        if (password !== undefined && currentPassword !== undefined && !await users.checkPasswordWithId(id, currentPassword)) {
+            res.statusMessage = 'Invalid currentPassword';
+            res.status(401).send();
+            return;
+        }
+        if (email !== undefined) {
+            await users.updateEmail(email, id);
+        }
+        if (firstName !== undefined) {
+            await users.updateFirstName(firstName, id);
+        }
+        if (lastName !== undefined) {
+            await users.updateLastName(lastName, id);
+        }
+        if (password !== undefined && currentPassword !== undefined) {
+            await users.updatePassword(password, id);
+        }
+        res.status(200).send();
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
