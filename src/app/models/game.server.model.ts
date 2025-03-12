@@ -3,17 +3,18 @@ import Logger from "../../config/logger";
 import { getPool } from "../../config/db";
 
 const getAll = async (filters: {
-    search?: string;
+    q?: string;
     genreIds?: number[];
-    priceMin?: number;
-    priceMax?: number;
+    price?: number;
     platformIds?: number[];
     creatorId?: number;
     reviewerId?: number;
     sortBy?: string;
     startIndex?: string;
+    ownedByMe?: string;
+    wishlistedByMe?: string;
     count?: string;
-}): Promise<any> => {
+}, userId?: string): Promise<any> => {
     Logger.info("Getting filtered games");
     const conn = await getPool().getConnection();
     const sortOptions: Record<string, string> = {
@@ -42,32 +43,64 @@ const getAll = async (filters: {
                  LEFT JOIN game_platforms gp ON g.id = gp.game_id
                  LEFT JOIN platform p ON gp.platform_id = p.id
                  LEFT JOIN game_review gr ON g.id = gr.game_id
-        WHERE 1=1
     `;
+    if (filters.wishlistedByMe === 'true' && userId !== undefined) {
+        query += '\nLEFT JOIN wishlist w ON w.game_id = g.id'
+    }
+    if (filters.ownedByMe === 'true' && userId !== undefined) {
+        query += '\nLEFT JOIN owned o ON o.game_id = g.id'
+    }
+    query += '\nWHERE 1=1'
     const params = [];
-    if (filters.search) {
-        query += ` AND title LIKE ?`;
-        params.push(`%${filters.search}%`);
+    if (filters.q !== undefined) {
+        query += ` AND LOWER(title) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?)`;
+        params.push('%' + filters.q + '%');
+        params.push('%' + filters.q + '%');
+    }
+    if (filters.genreIds) {
+        if (!Array.isArray(filters.genreIds)) {
+            filters.genreIds = [filters.genreIds]; // Convert single value to array
+        }
     }
     if (filters.genreIds && filters.genreIds.length > 0) {
-        query += ` AND genre_id IN (${filters.genreIds.map(() => '?').join(',')})`;
+        // Create the appropriate number of placeholders for genreIds
+        const genrePlaceholders = filters.genreIds.map(() => '?').join(',');
+        query += ` AND genre_id IN (${genrePlaceholders})`;
+        // Push the values as separate parameters
         params.push(...filters.genreIds);
     }
-    if (filters.priceMin !== undefined) {
-        query += ` AND price >= ?`;
-        params.push(filters.priceMin);
+    if (filters.platformIds) {
+        if (!Array.isArray(filters.platformIds)) {
+            filters.platformIds = [filters.platformIds]; // Convert single value to array
+        }
     }
-    if (filters.priceMax !== undefined) {
+    if (filters.platformIds && filters.platformIds.length > 0) {
+        // Create the appropriate number of placeholders for platformIds
+        const genrePlaceholders = filters.platformIds.map(() => '?').join(',');
+        query += ` AND platform_id IN (${genrePlaceholders})`;
+        // Push the values as separate parameters
+        params.push(...filters.platformIds);
+    }
+
+    if (filters.price !== undefined) {
         query += ` AND price <= ?`;
-        params.push(filters.priceMax);
+        params.push(filters.price);
     }
     if (filters.creatorId !== undefined) {
         query += ` AND creator_id = ?`;
         params.push(filters.creatorId);
     }
     if (filters.reviewerId !== undefined) {
-        query += ` AND id IN (SELECT game_id FROM game_review WHERE user_id = ?)`;
+        query += ` AND g.id IN (SELECT game_id FROM game_review WHERE user_id = ?)`;
         params.push(filters.reviewerId);
+    }
+    if (filters.wishlistedByMe === 'true') {
+        query += ' AND w.user_id = ?';
+        params.push(userId);
+    }
+    if (filters.ownedByMe === 'true') {
+        query += ' AND o.user_id = ?';
+        params.push(userId);
     }
     query += ' GROUP BY g.id, g.title, g.genre_id, g.creator_id, u.first_name, u.last_name, g.creation_date, g.price'
     let sqlSortBy = "creation_date ASC";
@@ -75,6 +108,11 @@ const getAll = async (filters: {
         sqlSortBy = sortOptions[filters.sortBy];
     }
     query += ` ORDER BY ${sqlSortBy}`;
+    if (sqlSortBy !== 'creation_date ASC') {
+        query += ', g.id ASC';
+    }
+    const [gamesBeforePaginaton] = await conn.query(query, params);
+    const count = gamesBeforePaginaton.length;
     if (filters.startIndex !== undefined && filters.count !== undefined) {
         query += ` LIMIT ?, ?`;
         params.push(Number(filters.startIndex), Number(filters.count));
@@ -95,10 +133,15 @@ const getAll = async (filters: {
         game.creationDate = game.creationDate.toISOString();
         game.rating = parseFloat(game.rating);
     }
-    const [countRows] = await conn.query(`SELECT COUNT(*) AS count FROM game`);
-    const count = countRows[0].count;
-
     return { games, count };
 }
 
-export { getAll };
+const checkPlatformExists = async (platform: any): Promise<boolean> => {
+    Logger.info("Check platform exists platform: " + platform);
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM platform WHERE id = ?"
+    const [result] = await conn.query(query, [platform]);
+    return (result[0].count > 0);
+}
+
+export { getAll, checkPlatformExists };

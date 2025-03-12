@@ -1,22 +1,79 @@
 import {Request, Response} from "express";
 import Logger from "../../config/logger";
 import * as games from "../models/game.server.model";
+import * as users from "../models/user.server.model";
 import * as schemas from "../resources/schemas.json";
 import {validate} from "../services/validator";
 
 const getAllGames = async(req: Request, res: Response): Promise<void> => {
+    const sortOptions: Record<string, string> = { // copied from game.server.model
+        "ALPHABETICAL_ASC": "title ASC",
+        "ALPHABETICAL_DESC": "title DESC",
+        "PRICE_ASC": "price ASC",
+        "PRICE_DESC": "price DESC",
+        "CREATED_ASC": "creation_date ASC",
+        "CREATED_DESC": "creation_date DESC",
+        "RATING_ASC": "rating ASC",
+        "RATING_DESC": "rating DESC"
+    };
     try {
-        if (!await validate(schemas.game_search, req.body)) {
+        Logger.info(req.query);
+        if (!(await validate(schemas.game_search, req.query))) {
             res.statusMessage = "Bad Request";
             res.status(400).send();
             return;
         }
-        if((req.body.ownedByMe === true || req.body.wishlistedByMe === true) && req.header('X-Authorization') === null) {
+        if (req.query.sortBy !== undefined && !(String(req.query.sortBy) in sortOptions)) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
+        if((req.query.ownedByMe === 'true' || req.query.wishlistedByMe === 'true') && (req.header('X-Authorization') === null || !await users.checkUserToken(req.header('X-Authorization')))) {
             res.statusMessage = "Unauthorized";
             res.status(401).send();
             return;
         }
-        const allGames = await games.getAll(req.query);
+        if (req.query.genreIds !== undefined && Array.isArray(req.query.genreIds)) {
+            for (const id of req.query.genreIds) {
+                if (isNaN(Number(id))) {
+                    res.statusMessage = 'Bad Request';
+                    res.status(400).send();
+                    return;
+                }
+            }
+        } else if (req.query.genreIds !== undefined && isNaN(Number(req.query.genreIds))) {
+            res.statusMessage = 'Bad Request';
+            res.status(400).send();
+            return;
+        }
+        if (req.query.platformIds !== undefined && Array.isArray(req.query.platformIds)) {
+            for (const id of req.query.platformIds) {
+                if (!await games.checkPlatformExists(id)) {
+                    res.statusMessage = 'Bad Request';
+                    res.status(400).send();
+                    return;
+                }
+            }
+        } else if (req.query.platformIds !== undefined && !await games.checkPlatformExists(req.query.platformIds)) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
+        if (req.query.price !== undefined && Number(req.query.price) < 0) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
+        if (req.query.creatorId !== undefined && isNaN(Number(req.query.creatorId))) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
+        let userId;
+        if (req.query.ownedByMe === 'true' || req.query.wishlistedByMe === 'true') {
+            userId = await users.getIdByToken(req.header('X-Authorization'));
+        }
+        const allGames = await games.getAll(req.query, userId);
         res.status(200).send(allGames);
         return;
     } catch (err) {

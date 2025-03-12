@@ -106,6 +106,15 @@ const checkUserExists = async (id: string): Promise<boolean> => {
     return (result[0].count > 0);
 }
 
+const getIdByToken = async (token: string): Promise<string> => {
+    Logger.info("Getting id linked with token: " + token);
+    const conn = await getPool().getConnection();
+    const query = "SELECT id FROM user WHERE auth_token = ?";
+    const [result] = await conn.query(query, [token]);
+    await conn.release();
+    return result[0].id;
+}
+
 const updateEmail = async (email: string, id: string): Promise<void> => {
     Logger.info("Updating email of user with id: " + id);
     const conn = await getPool().getConnection();
@@ -142,4 +151,4 @@ const updatePassword = async (password: string, id: string): Promise<void> => {
     return;
 }
 
-export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken, updateEmail, updatePassword, updateLastName, updateFirstName, checkPasswordWithId}
+export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken, updateEmail, updatePassword, updateLastName, updateFirstName, checkPasswordWithId, getIdByToken}
