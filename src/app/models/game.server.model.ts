@@ -142,7 +142,7 @@ const get = async (id: string): Promise<any> => {
     const conn = await getPool().getConnection();
     const gameTableQuery = 'SELECT g.id AS gameId, g.title, g.genre_id AS genreId, g.creator_id AS creatorId, u.first_name AS creatorFirstName, u.last_name AS creatorLastName, g.price, g.creation_date AS creationDate, g.description FROM game g JOIN user u ON g.creator_id = u.id WHERE g.id = ?';
     const [gameTableResult] = await conn.query(gameTableQuery, [id]);
-    const averageRatingQuery = 'SELECT CAST(ROUND(AVG(rating), 1) AS FLOAT) AS rating FROM game_review WHERE game_id = ?';
+    const averageRatingQuery = 'SELECT IFNULL(CAST(ROUND(AVG(rating), 1) AS FLOAT), 0) AS rating FROM game_review WHERE game_id = ?';
     const [averageRatingResult] = await conn.query(averageRatingQuery, [id]);
     const numOwnersQuery = 'SELECT COUNT(*) as numberOfOwners FROM owned WHERE game_id = ?';
     const [numOwnersResult] = await conn.query(numOwnersQuery, [id]);
@@ -297,4 +297,20 @@ const deleteGame = async (gameId: string): Promise<void> => {
     return;
 }
 
-export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame, checkNumReviews, deleteGame };
+const getGenres = async (): Promise<void> => {
+    Logger.info("Getting all genres");
+    const conn = await getPool().getConnection();
+    const query = "SELECT id as genreId, name FROM genre"
+    const [result] = await conn.query(query);
+    return result
+}
+
+const getPlatforms = async (): Promise<void> => {
+    Logger.info("Getting all platforms");
+    const conn = await getPool().getConnection();
+    const query = "SELECT id as platformId, name FROM platform";
+    const [result] = await conn.query(query);
+    return result
+}
+
+export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame, checkNumReviews, deleteGame, getGenres, getPlatforms };

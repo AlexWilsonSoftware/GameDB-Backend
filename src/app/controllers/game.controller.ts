@@ -287,8 +287,7 @@ const deleteGame = async(req: Request, res: Response): Promise<void> => {
 
 const getGenres = async(req: Request, res: Response): Promise<void> => {
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        res.status(200).send(await games.getGenres());
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
@@ -298,8 +297,7 @@ const getGenres = async(req: Request, res: Response): Promise<void> => {
 
 const getPlatforms = async(req: Request, res: Response): Promise<void> => {
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        res.status(200).send(await games.getPlatforms());
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
