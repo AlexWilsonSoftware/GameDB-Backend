@@ -278,4 +278,23 @@ const checkCreatorOfGame = async (gameId: string, userId: string): Promise<boole
     return result[0].creator_id === userId;
 }
 
-export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame };
+const checkNumReviews = async (gameId: string): Promise<boolean> => {
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM game_review WHERE game_id = ?";
+    const [result] = await conn.query(query, [gameId]);
+    await conn.release();
+    return result[0].count > 0;
+}
+
+const deleteGame = async (gameId: string): Promise<void> => {
+    Logger.info("Deleting game with id: " + gameId);
+    const conn = await getPool().getConnection();
+    const queryPlatform = "DELETE FROM game_platforms WHERE game_id = ?";
+    await conn.query(queryPlatform, [gameId]);
+    const queryFinal = "DELETE FROM game WHERE id = ?";
+    await conn.query(queryFinal, [gameId]);
+    await conn.release();
+    return;
+}
+
+export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame, checkNumReviews, deleteGame };

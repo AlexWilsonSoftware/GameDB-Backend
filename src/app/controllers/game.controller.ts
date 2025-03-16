@@ -248,8 +248,35 @@ const editGame = async(req: Request, res: Response): Promise<void> => {
 
 const deleteGame = async(req: Request, res: Response): Promise<void> => {
     try {
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
+        if (isNaN(Number(req.params.id))) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send()
+            return;
+        }
+        if (!await games.checkGameExists(req.params.id)) {
+            res.statusMessage = "No game found with id"
+            res.status(404).send()
+            return;
+        }
+        if (!await users.checkUserToken(req.header('X-Authorization'))) {
+            res.statusMessage = "Unauthorized";
+            res.status(401).send();
+            return;
+        }
+        const userId = await users.getIdByToken(req.header('X-Authorization'));
+        if (!await games.checkCreatorOfGame(req.params.id, userId)) {
+            res.statusMessage = "Only the creator of a game may delete it";
+            res.status(403).send();
+            return;
+        }
+        if (await games.checkNumReviews(req.params.id)) {
+            res.statusMessage = "Can not delete a game with one or more reviews";
+            res.status(403).send();
+            return;
+        }
+        await games.deleteGame(req.params.id)
+        res.status(200).send()
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
