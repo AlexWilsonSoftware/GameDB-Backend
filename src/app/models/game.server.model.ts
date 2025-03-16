@@ -133,7 +133,52 @@ const getAll = async (filters: {
         game.creationDate = game.creationDate.toISOString();
         game.rating = parseFloat(game.rating);
     }
+    await conn.release();
     return { games, count };
+}
+
+const get = async (id: string): Promise<any> => {
+    Logger.info("Getting details of game with id: " + id)
+    const conn = await getPool().getConnection();
+    const gameTableQuery = 'SELECT g.id AS gameId, g.title, g.genre_id AS genreId, g.creator_id AS creatorId, u.first_name AS creatorFirstName, u.last_name AS creatorLastName, g.price, g.creation_date AS creationDate, g.description FROM game g JOIN user u ON g.creator_id = u.id WHERE g.id = ?';
+    const [gameTableResult] = await conn.query(gameTableQuery, [id]);
+    const averageRatingQuery = 'SELECT CAST(ROUND(AVG(rating), 1) AS FLOAT) AS rating FROM game_review WHERE game_id = ?';
+    const [averageRatingResult] = await conn.query(averageRatingQuery, [id]);
+    const numOwnersQuery = 'SELECT COUNT(*) as numberOfOwners FROM owned WHERE game_id = ?';
+    const [numOwnersResult] = await conn.query(numOwnersQuery, [id]);
+    const numWishlistsQuery = 'SELECT COUNT(*) as numberOfWishlists FROM wishlist WHERE game_id = ?';
+    const [numWishlistsResult] = await conn.query(numWishlistsQuery, [id]);
+    const platformIdsQuery = 'SELECT GROUP_CONCAT(platform_id) AS platformIds FROM game_platforms WHERE game_id = ?';
+    const [platformIdsResult] = await conn.query(platformIdsQuery, [id]);
+    conn.release();
+    return {
+        ...gameTableResult[0],
+        rating: averageRatingResult[0].rating,
+        numberOfOwners: numOwnersResult[0].numberOfOwners,
+        numberOfWishlists: numWishlistsResult[0].numberOfWishlists,
+        platformIds: platformIdsResult[0].platformIds
+            ? platformIdsResult[0].platformIds.split(',').map(Number)
+            : []
+    };
+}
+
+const add = async (title: string, description: string, genreId: string, price: string, platformIds: any, creatorId: string): Promise<string> => {
+    Logger.info("Adding game: " + title);
+    const conn = await getPool().getConnection();
+    const query = "INSERT INTO game (title, description, genre_id, price, creation_date, creator_id) VALUES (?, ?, ?, ?, NOW(), ?)"
+    const [result] = await conn.query(query, [title, description, genreId, price, creatorId]);
+    Logger.info(result);
+    const id = result.insertId;
+    const platformQuery = "INSERT INTO game_platforms (game_id, platform_id) VALUES (?, ?)"
+    if (Array.isArray(platformIds) && platformIds.length > 0) {
+        for (const platformId of platformIds) {
+            await conn.query(platformQuery, [id, platformId]);
+        }
+    } else if (platformIds !== undefined) {
+        await conn.query(platformQuery, [id, platformIds]);
+    }
+    await conn.release();
+    return id;
 }
 
 const checkPlatformExists = async (platform: any): Promise<boolean> => {
@@ -141,7 +186,96 @@ const checkPlatformExists = async (platform: any): Promise<boolean> => {
     const conn = await getPool().getConnection();
     const query = "SELECT COUNT(*) as count FROM platform WHERE id = ?"
     const [result] = await conn.query(query, [platform]);
+    await conn.release();
     return (result[0].count > 0);
 }
 
-export { getAll, checkPlatformExists };
+const checkGenreExists = async (genre: string): Promise<boolean> => {
+    Logger.info("Check genre: " + genre);
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM genre WHERE id = ?"
+    const [result] = await conn.query(query, [genre]);
+    await conn.release();
+    return (result[0].count > 0);
+}
+
+const checkTitleExists = async (title: string): Promise<boolean> => {
+    Logger.info("Checking title is unique, title: " + title);
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM game WHERE title = ?";
+    const [result] = await conn.query(query, [title]);
+    await conn.release();
+    return (result[0].count > 0);
+}
+
+const checkGameExists = async (gameId: string): Promise<boolean> => {
+    Logger.info("Checking game exists: " + gameId);
+    const conn = await getPool().getConnection();
+    const query = "SELECT COUNT(*) as count FROM game WHERE id = ?";
+    const [result] = await conn.query(query, [gameId]);
+    await conn.release();
+    return (result[0].count > 0);
+}
+
+const updateTitle = async (title: string, id: string): Promise<void> => {
+    Logger.info("Updating title of game with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE game SET title = ? WHERE id = ?";
+    await conn.query(query, [title, id]);
+    await conn.release();
+    return;
+}
+
+const updateDescription = async (description: string, id: string): Promise<void> => {
+    Logger.info("Updating description of game with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE game SET description = ? WHERE id = ?";
+    await conn.query(query, [description, id]);
+    await conn.release();
+    return;
+}
+
+const updateGenreId = async (genreId: string, id: string): Promise<void> => {
+    Logger.info("Updating genre of game with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE game SET genre_id = ? WHERE id = ?";
+    await conn.query(query, [genreId, id]);
+    await conn.release();
+    return;
+}
+
+const updatePlatforms = async (platforms: any, id: string): Promise<void> => {
+    Logger.info("Updating platforms of game with id: " + id);
+    const conn = await getPool().getConnection();
+    const removePreviousRows = "DELETE FROM game_platforms WHERE game_id = ?"
+    await conn.query(removePreviousRows, [id]);
+    const platformQuery = "INSERT INTO game_platforms (game_id, platform_id) VALUES (?, ?)";
+    if (Array.isArray(platforms) && platforms.length > 0) {
+        for (const platformId of platforms) {
+            await conn.query(platformQuery, [id, platformId]);
+        }
+    } else if (platforms !== undefined) {
+        await conn.query(platformQuery, [id, platforms]);
+    }
+    await conn.release();
+    return;
+}
+
+const updatePrice = async (price: string, id: string): Promise<void> => {
+    Logger.info("Updating price of game with id: " + id);
+    const conn = await getPool().getConnection();
+    const query = "UPDATE game SET price = ? WHERE id = ?"
+    await conn.query(query, [price, id]);
+    await conn.release();
+    return;
+}
+
+const checkCreatorOfGame = async (gameId: string, userId: string): Promise<boolean> => {
+    const conn = await getPool().getConnection();
+    const query = "SELECT creator_id FROM game WHERE id = ?";
+    const [result] = await conn.query(query, [gameId]);
+    await conn.release();
+    return result[0].creator_id === userId;
+}
+
+export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame };
