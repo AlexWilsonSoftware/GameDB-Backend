@@ -12,7 +12,7 @@ const getReviews =  async (id: string) => {
 }
 
 const hasUserReviewed = async (userId: string, gameId: string): Promise<boolean> => {
-    Logger.info("Checking if user " + userId + " has reviewd game " + gameId);
+    Logger.info("Checking if user " + userId + " has reviewed game " + gameId);
     const conn = await getPool().getConnection();
     const query = "SELECT COUNT(*) as count FROM game_review WHERE game_id = ? AND user_id = ?";
     const [result] = await conn.query(query, [gameId, userId]);

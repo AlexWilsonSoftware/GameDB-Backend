@@ -94,8 +94,6 @@ const setImage = async (req: Request, res: Response): Promise<void> => {
             res.status(201).send();
             return;
         }
-        res.statusMessage = "Not Implemented";
-        res.status(501).send();
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
