@@ -7,14 +7,14 @@ import {establishUserToken} from "../models/user.server.model";
 
 
 const register = async (req: Request, res: Response): Promise<void> => {
-    Logger.http(`POST create user with email: ${req.body.email}`);
-    const validation = await validate(schemas.user_register, req.body);
-    if (validation !== true) {
-        res.statusMessage = 'Bad Request: ' + validation.message;
-        res.status(400).send();
-        return;
-    }
     try {
+        Logger.http(`POST create user with email: ${req.body.email}`);
+        const validation = await validate(schemas.user_register, req.body);
+        if (validation !== true) {
+            res.statusMessage = 'Bad Request: ' + validation.message;
+            res.status(400).send();
+            return;
+        }
         const emailExists = await users.checkEmailExists(req.body.email);
         if (emailExists) {
             res.statusMessage = 'Email already exists';
@@ -32,27 +32,27 @@ const register = async (req: Request, res: Response): Promise<void> => {
 }
 
 const login = async (req: Request, res: Response): Promise<void> => {
-    const randToken = require('rand-token');
-    Logger.http(`POST login with email: ${req.body.email}`);
-    const validation = await validate(schemas.user_login, req.body);
-    if (validation !== true) {
-        res.statusMessage = 'Invalid information';
-        res.status(400).send();
-        return;
-    }
-    const emailExists = await users.checkEmailExists(req.body.email);
-    if (!emailExists) {
-        res.statusMessage = 'Incorrect email/password';
-        res.status(401).send();
-        return;
-    }
-    const passwordMatches = await users.checkEmailMatchesPassword(req.body.email, req.body.password);
-    if (!passwordMatches) {
-        res.statusMessage = 'Incorrect email/password';
-        res.status(401).send();
-        return;
-    }
     try {
+        const randToken = require('rand-token');
+        Logger.http(`POST login with email: ${req.body.email}`);
+        const validation = await validate(schemas.user_login, req.body);
+        if (validation !== true) {
+            res.statusMessage = 'Invalid information';
+            res.status(400).send();
+            return;
+        }
+        const emailExists = await users.checkEmailExists(req.body.email);
+        if (!emailExists) {
+            res.statusMessage = 'Incorrect email/password';
+            res.status(401).send();
+            return;
+        }
+        const passwordMatches = await users.checkEmailMatchesPassword(req.body.email, req.body.password);
+        if (!passwordMatches) {
+            res.statusMessage = 'Incorrect email/password';
+            res.status(401).send();
+            return;
+        }
         const authToken = randToken.generate(32);
         const id = await establishUserToken(req.body.email, authToken);
         res.status(200).send({userId: id, token: authToken});
@@ -64,15 +64,15 @@ const login = async (req: Request, res: Response): Promise<void> => {
 }
 
 const logout = async (req: Request, res: Response): Promise<void> => {
-    Logger.http(`POST logout with email: ${req.body.email}`);
-    const token = req.header("X-Authorization");
-    const isLoggedIn = await users.checkUserToken(token);
-    if (!isLoggedIn) {
-        res.statusMessage = 'Cannot log out if you are not authenticated';
-        res.status(401).send();
-        return;
-    }
     try {
+        Logger.http(`POST logout with email: ${req.body.email}`);
+        const token = req.header("X-Authorization");
+        const isLoggedIn = await users.checkUserToken(token);
+        if (!isLoggedIn) {
+            res.statusMessage = 'Cannot log out if you are not authenticated';
+            res.status(401).send();
+            return;
+        }
         await users.removeUserToken(token);
         res.status(200).send();
     } catch (err) {
@@ -83,21 +83,21 @@ const logout = async (req: Request, res: Response): Promise<void> => {
 }
 
 const view = async (req: Request, res: Response): Promise<void> => {
-    Logger.http(`GET view with email: ${req.body.email}`);
-    const id = req.params.id;
-    const loggedIn = await users.compareUserToken(id, req.header("X-Authorization"));
-    if (isNaN(Number(id))) {
-        res.statusMessage = 'Bad Request';
-        res.status(400).send();
-        return;
-    }
-    const userExists = await users.checkUserExists(id);
-    if (!userExists) {
-        res.statusMessage = 'No user with specified ID';
-        res.status(404).send();
-        return;
-    }
     try {
+        Logger.http(`GET view with email: ${req.body.email}`);
+        const id = req.params.id;
+        const loggedIn = await users.compareUserToken(id, req.header("X-Authorization"));
+        if (isNaN(Number(id))) {
+            res.statusMessage = 'Bad Request';
+            res.status(400).send();
+            return;
+        }
+        const userExists = await users.checkUserExists(id);
+        if (!userExists) {
+            res.statusMessage = 'No user with specified ID';
+            res.status(404).send();
+            return;
+        }
         if (loggedIn) {
             const result = await users.getAll(id);
             res.status(200).send({"email": result.email, "firstName": result.first_name, "lastName": result.last_name});
@@ -114,14 +114,14 @@ const view = async (req: Request, res: Response): Promise<void> => {
 }
 
 const update = async (req: Request, res: Response): Promise<void> => {
-    const id = req.params.id;
-    const email = req.body?.email;
-    const firstName = req.body?.firstName;
-    const lastName = req.body?.lastName;
-    const password = req.body?.password;
-    const currentPassword = req.body?.currentPassword;
-    const token = req.header("X-Authorization");
     try {
+        const id = req.params.id;
+        const email = req.body?.email;
+        const firstName = req.body?.firstName;
+        const lastName = req.body?.lastName;
+        const password = req.body?.password;
+        const currentPassword = req.body?.currentPassword;
+        const token = req.header("X-Authorization");
         if (isNaN(Number(id))) {
             res.statusMessage = 'Bad Request';
             res.status(400).send();
