@@ -7,6 +7,7 @@ const checkGameHasImage = async (id: string): Promise<boolean> => {
     const conn = await getPool().getConnection();
     const query = "SELECT image_filename FROM game WHERE id = ?";
     const [result] = await conn.query(query, [id]);
+    await conn.release();
     return result[0].image_filename !== null;
 }
 

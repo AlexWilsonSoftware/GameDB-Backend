@@ -111,6 +111,12 @@ const addGame = async(req: Request, res: Response): Promise<void> => {
             res.status(401).send();
             return;
         }
+        const validation = await validate(schemas.game_post, req.body);
+        if (validation !== true) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
         if (!await games.checkGenreExists(req.body.genreId)) {
             res.statusMessage = "Bad Request";
             res.status(400).send();
@@ -124,11 +130,6 @@ const addGame = async(req: Request, res: Response): Promise<void> => {
         if (await games.checkTitleExists(req.body.title)) {
             res.statusMessage = "Game title already exists";
             res.status(403).send();
-            return;
-        }
-        if (req.body.description.length > 1024) {
-            res.statusMessage = "Bad Request";
-            res.status(400).send();
             return;
         }
         if (req.body.platformIds !== undefined && Array.isArray(req.body.platformIds)) {
@@ -163,7 +164,23 @@ const addGame = async(req: Request, res: Response): Promise<void> => {
 
 const editGame = async(req: Request, res: Response): Promise<void> => {
     try {
+        if (req.header("X-Authorization") === undefined) {
+            res.statusMessage = 'Unauthorized';
+            res.status(401).send();
+            return;
+        }
+        if (!await users.checkUserToken(req.header('X-Authorization'))) {
+            res.statusMessage = "Unauthorized";
+            res.status(401).send();
+            return;
+        }
         const creatorId = await users.getIdByToken(req.header('X-Authorization'));
+        const validation = await validate(schemas.game_patch, req.body);
+        if (validation !== true) {
+            res.statusMessage = "Bad Request";
+            res.status(400).send();
+            return;
+        }
         if (isNaN(Number(req.params.id))) {
             res.statusMessage = "Bad Request";
             res.status(400).send()
@@ -172,16 +189,6 @@ const editGame = async(req: Request, res: Response): Promise<void> => {
         if (!await games.checkCreatorOfGame(req.params.id, creatorId)) {
             res.statusMessage = "Only the creator of a game may change it";
             res.status(403).send();
-            return;
-        }
-        if (!await validate(schemas.game_patch, req.body)) {
-            res.statusMessage = "Bad Request";
-            res.status(400).send();
-            return;
-        }
-        if (!await users.checkUserToken(req.header('X-Authorization'))) {
-            res.statusMessage = "Unauthorized";
-            res.status(401).send();
             return;
         }
         if (!await games.checkGenreExists(req.body.genreId)) {
@@ -197,11 +204,6 @@ const editGame = async(req: Request, res: Response): Promise<void> => {
         if (await games.checkTitleExists(req.body.title)) {
             res.statusMessage = "Game title already exists";
             res.status(403).send();
-            return;
-        }
-        if (req.body.description.length > 1024) {
-            res.statusMessage = "Bad Request";
-            res.status(400).send();
             return;
         }
         if (req.body.platformIds !== undefined && Array.isArray(req.body.platformIds)) {
@@ -288,6 +290,7 @@ const deleteGame = async(req: Request, res: Response): Promise<void> => {
 const getGenres = async(req: Request, res: Response): Promise<void> => {
     try {
         res.status(200).send(await games.getGenres());
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
@@ -298,6 +301,7 @@ const getGenres = async(req: Request, res: Response): Promise<void> => {
 const getPlatforms = async(req: Request, res: Response): Promise<void> => {
     try {
         res.status(200).send(await games.getPlatforms());
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";

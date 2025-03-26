@@ -40,6 +40,10 @@ const addGameToWishlist = async(req: Request, res: Response): Promise<void> => {
             res.status(403).send()
             return;
         }
+        if (await gameActions.checkWishlist(userId, req.params.id)) {
+            res.status(200).send()
+            return;
+        }
         await gameActions.addToWishlist(userId, req.params.id)
         res.status(200).send();
     } catch (err) {

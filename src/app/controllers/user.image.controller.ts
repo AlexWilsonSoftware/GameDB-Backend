@@ -58,7 +58,7 @@ const setImage = async (req: Request, res: Response): Promise<void> => {
             res.status(404).send();
             return;
         }
-        if (!req.header("X-Authorization") === undefined) {
+        if (req.header("X-Authorization") === undefined) {
             res.statusMessage = 'Unauthorized';
             res.status(401).send();
             return;
@@ -126,6 +126,11 @@ const deleteImage = async (req: Request, res: Response): Promise<void> => {
         if (!await users.compareUserToken(req.params.id, req.header("X-Authorization"))) {
             res.statusMessage = "Can not delete another user's profile photo";
             res.status(403).send();
+            return;
+        }
+        if (!await userImages.checkUserHasImage(req.params.id)) {
+            res.statusMessage = 'User has no image';
+            res.status(404).send();
             return;
         }
         await userImages.removeUserImage(req.params.id);

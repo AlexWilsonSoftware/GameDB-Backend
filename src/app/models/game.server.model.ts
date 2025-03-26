@@ -123,7 +123,6 @@ const getAll = async (filters: {
         query += ' LIMIT ?, 1000000000000000';
         params.push(filters.startIndex);
     }
-    Logger.info(query);
     const [games] = await conn.query(query, params);
     for (const game of games) {
         const [platforms] = await conn.query('SELECT platform_id FROM game_platforms WHERE game_id = ?', [game.gameId]);
@@ -150,7 +149,7 @@ const get = async (id: string): Promise<any> => {
     const [numWishlistsResult] = await conn.query(numWishlistsQuery, [id]);
     const platformIdsQuery = 'SELECT GROUP_CONCAT(platform_id) AS platformIds FROM game_platforms WHERE game_id = ?';
     const [platformIdsResult] = await conn.query(platformIdsQuery, [id]);
-    conn.release();
+    await conn.release();
     return {
         ...gameTableResult[0],
         rating: averageRatingResult[0].rating,
@@ -167,7 +166,6 @@ const add = async (title: string, description: string, genreId: string, price: s
     const conn = await getPool().getConnection();
     const query = "INSERT INTO game (title, description, genre_id, price, creation_date, creator_id) VALUES (?, ?, ?, ?, NOW(), ?)"
     const [result] = await conn.query(query, [title, description, genreId, price, creatorId]);
-    Logger.info(result);
     const id = result.insertId;
     const platformQuery = "INSERT INTO game_platforms (game_id, platform_id) VALUES (?, ?)"
     if (Array.isArray(platformIds) && platformIds.length > 0) {
@@ -302,6 +300,7 @@ const getGenres = async (): Promise<void> => {
     const conn = await getPool().getConnection();
     const query = "SELECT id as genreId, name FROM genre"
     const [result] = await conn.query(query);
+    await conn.release();
     return result
 }
 
@@ -310,6 +309,7 @@ const getPlatforms = async (): Promise<void> => {
     const conn = await getPool().getConnection();
     const query = "SELECT id as platformId, name FROM platform";
     const [result] = await conn.query(query);
+    await conn.release();
     return result
 }
 

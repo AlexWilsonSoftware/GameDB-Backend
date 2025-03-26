@@ -24,6 +24,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
 
         const result = await users.insert(req.body.email, req.body.firstName, req.body.lastName, req.body.password);
         res.status(201).send({userId: result.insertId});
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
@@ -56,6 +57,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
         const authToken = randToken.generate(32);
         const id = await establishUserToken(req.body.email, authToken);
         res.status(200).send({userId: id, token: authToken});
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
@@ -66,6 +68,11 @@ const login = async (req: Request, res: Response): Promise<void> => {
 const logout = async (req: Request, res: Response): Promise<void> => {
     try {
         Logger.http(`POST logout with email: ${req.body.email}`);
+        if (req.header("X-Authorization") === undefined) {
+            res.statusMessage = 'Cannot log out if you are not authenticated';
+            res.status(401).send();
+            return;
+        }
         const token = req.header("X-Authorization");
         const isLoggedIn = await users.checkUserToken(token);
         if (!isLoggedIn) {
@@ -75,6 +82,7 @@ const logout = async (req: Request, res: Response): Promise<void> => {
         }
         await users.removeUserToken(token);
         res.status(200).send();
+        return;
     } catch (err) {
         Logger.error(err);
         res.statusMessage = "Internal Server Error";
