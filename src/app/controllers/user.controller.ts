@@ -171,7 +171,7 @@ const update = async (req: Request, res: Response): Promise<void> => {
             res.status(404).send();
             return;
         }
-        if (password !== undefined && currentPassword !== undefined && !await password.compare(await passwords.hash(password), await users.getPasswordFromId(req.params.id))) {
+        if (password !== undefined && currentPassword !== undefined && !await passwords.compare(currentPassword, await users.getPasswordFromId(req.params.id))) {
             res.statusMessage = 'Invalid currentPassword';
             res.status(401).send();
             return;
