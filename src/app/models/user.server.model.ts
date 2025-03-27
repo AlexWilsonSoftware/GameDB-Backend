@@ -38,22 +38,31 @@ const checkEmailExists = async (email: string): Promise<boolean> => {
     return (result[0].count > 0);
 }
 
-const checkEmailMatchesPassword = async (email: string, password: string): Promise<boolean> => {
+const checkEmailExistsPatch = async (email: string, id: string): Promise<boolean> => {
+    Logger.info("Checking email is unique for patch, email: " + email);
+    const conn = await getPool().getConnection();
+    const query = "SELECT id FROM user WHERE id != ? AND email = ?";
+    const [result] = await conn.query(query, [id, email]);
+    await conn.release();
+    return result.length > 0;
+}
+
+const getPasswordFromEmail = async (email: string): Promise<string> => {
     Logger.info("Checking if email matches password: " + email);
     const conn = await getPool().getConnection();
     const query = "SELECT password FROM user WHERE email = ?";
     const [result] = await conn.query(query, [email]);
     await conn.release();
-    return result[0].password === password;
+    return result[0].password;
 }
 
-const checkPasswordWithId = async (id: string, password: string): Promise<boolean> => {
+const getPasswordFromId = async (id: string): Promise<string> => {
     Logger.info("Checking if user with id ${id} current password is correct");
     const conn = await getPool().getConnection();
     const query = "SELECT password FROM user WHERE id = ?";
     const [result] = await conn.query(query, [id]);
     await conn.release();
-    return result[0].password === password;
+    return result[0].password;
 }
 
 const establishUserToken = async (email: string, token: string): Promise<number> => {
@@ -151,4 +160,4 @@ const updatePassword = async (password: string, id: string): Promise<void> => {
     return;
 }
 
-export {insert, checkEmailExists, checkEmailMatchesPassword, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken, updateEmail, updatePassword, updateLastName, updateFirstName, checkPasswordWithId, getIdByToken}
+export {insert, checkEmailExists, getPasswordFromEmail, establishUserToken, checkUserToken, removeUserToken, checkUserExists, getAll, getNames, compareUserToken, updateEmail, updatePassword, updateLastName, updateFirstName, getPasswordFromId, getIdByToken, checkEmailExistsPatch}

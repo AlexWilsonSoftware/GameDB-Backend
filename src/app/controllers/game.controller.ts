@@ -201,7 +201,7 @@ const editGame = async(req: Request, res: Response): Promise<void> => {
             res.status(400).send();
             return;
         }
-        if (await games.checkTitleExists(req.body.title)) {
+        if (await games.checkTitleExistsPatch(req.body.title, req.params.id)) {
             res.statusMessage = "Game title already exists";
             res.status(403).send();
             return;

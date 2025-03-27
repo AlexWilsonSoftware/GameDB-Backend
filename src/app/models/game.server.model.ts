@@ -206,6 +206,16 @@ const checkTitleExists = async (title: string): Promise<boolean> => {
     return (result[0].count > 0);
 }
 
+const checkTitleExistsPatch = async (title: string, id: string): Promise<boolean> => {
+    Logger.info("Checking title is unique for patch, title: " + title);
+    const conn = await getPool().getConnection();
+    const query = "SELECT id FROM game WHERE id != ? AND title = ?";
+    const [result] = await conn.query(query, [id, title]);
+    await conn.release();
+    return result.length > 0;
+}
+
+
 const checkGameExists = async (gameId: string): Promise<boolean> => {
     Logger.info("Checking game exists: " + gameId);
     const conn = await getPool().getConnection();
@@ -313,4 +323,4 @@ const getPlatforms = async (): Promise<void> => {
     return result
 }
 
-export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame, checkNumReviews, deleteGame, getGenres, getPlatforms };
+export { getAll, checkPlatformExists, checkGenreExists, checkTitleExists, add, checkGameExists, get, updateTitle, updateDescription, updateGenreId, updatePlatforms, updatePrice, checkCreatorOfGame, checkNumReviews, deleteGame, getGenres, getPlatforms, checkTitleExistsPatch };

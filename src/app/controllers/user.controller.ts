@@ -3,6 +3,7 @@ import Logger from '../../config/logger';
 import {validate} from "../services/validator";
 import * as users from "../models/user.server.model";
 import * as schemas from "../resources/schemas.json";
+import * as passwords from "../services/passwords"
 import {establishUserToken} from "../models/user.server.model";
 
 
@@ -22,7 +23,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const result = await users.insert(req.body.email, req.body.firstName, req.body.lastName, req.body.password);
+        const result = await users.insert(req.body.email, req.body.firstName, req.body.lastName, await passwords.hash(req.body.password));
         res.status(201).send({userId: result.insertId});
         return;
     } catch (err) {
@@ -48,8 +49,8 @@ const login = async (req: Request, res: Response): Promise<void> => {
             res.status(401).send();
             return;
         }
-        const passwordMatches = await users.checkEmailMatchesPassword(req.body.email, req.body.password);
-        if (!passwordMatches) {
+        const userPassword = await users.getPasswordFromEmail(req.body.email);
+        if (!await passwords.compare(req.body.password, userPassword)) {
             res.statusMessage = 'Incorrect email/password';
             res.status(401).send();
             return;
@@ -150,7 +151,7 @@ const update = async (req: Request, res: Response): Promise<void> => {
             res.status(403).send();
             return;
         }
-        if (await users.checkEmailExists(req.body.email)) {
+        if (await users.checkEmailExistsPatch(req.body.email, req.params.id)) {
             res.statusMessage = 'Email is already in use';
             res.status(403).send();
             return;
@@ -170,7 +171,7 @@ const update = async (req: Request, res: Response): Promise<void> => {
             res.status(404).send();
             return;
         }
-        if (password !== undefined && currentPassword !== undefined && !await users.checkPasswordWithId(id, currentPassword)) {
+        if (password !== undefined && currentPassword !== undefined && !await password.compare(await passwords.hash(password), await users.getPasswordFromId(req.params.id))) {
             res.statusMessage = 'Invalid currentPassword';
             res.status(401).send();
             return;
@@ -185,7 +186,7 @@ const update = async (req: Request, res: Response): Promise<void> => {
             await users.updateLastName(lastName, id);
         }
         if (password !== undefined && currentPassword !== undefined) {
-            await users.updatePassword(password, id);
+            await users.updatePassword(await passwords.hash(password), id);
         }
         res.status(200).send();
         return;
